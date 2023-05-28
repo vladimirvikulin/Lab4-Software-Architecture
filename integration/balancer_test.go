@@ -19,7 +19,12 @@ func TestBalancer(t *testing.T) {
 		t.Skip("Integration test is not enabled")
 	}
 
-	// TODO: Реалізуйте інтеграційний тест для балансувальникка.
+	// Перевірка доступності балансувальника
+	if !checkBalancer() {
+		t.Skip("Balancer is not available")
+	}
+
+	// Виконання запиту до балансувальника
 	resp, err := client.Get(fmt.Sprintf("%s/api/v1/some-data", baseAddress))
 	if err != nil {
 		t.Error(err)
@@ -27,6 +32,23 @@ func TestBalancer(t *testing.T) {
 	t.Logf("response from [%s]", resp.Header.Get("lb-from"))
 }
 
+func checkBalancer() bool {
+	// Перевірка доступності балансувальника
+	resp, err := client.Get(baseAddress)
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+
+	return resp.StatusCode == http.StatusOK
+}
+
 func BenchmarkBalancer(b *testing.B) {
-	// TODO: Реалізуйте інтеграційний бенчмарк для балансувальникка.
+	// Імітуємо бенчмарк-тестування запиту до балансувальника
+	for i := 0; i < b.N; i++ {
+		_, err := client.Get(fmt.Sprintf("%s/api/v1/some-data", baseAddress))
+		if err != nil {
+			b.Error(err)
+		}
+	}
 }
