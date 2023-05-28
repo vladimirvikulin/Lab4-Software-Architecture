@@ -29,6 +29,7 @@ var (
 		"server2:8080",
 		"server3:8080",
 	}
+	healthyPool = make([]string, len(serversPool))
 )
 
 func scheme() string {
@@ -89,17 +90,10 @@ func main() {
 	flag.Parse()
 
 	// TODO: Використовуйте дані про стан сервреа, щоб підтримувати список тих серверів, яким можна відправляти ззапит.
-	for _, server := range serversPool {
-		server := server
-		go func() {
-			for range time.Tick(10 * time.Second) {
-				log.Println(server, health(server))
-			}
-		}()
-	}
+	healthCheck(serversPool, healthyPool)
 
 	frontend := httptools.CreateServer(*port, http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		forward(serversPool[getIndex(r.RemoteAddr)], rw, r)
+		forward(healthyPool[getIndex(r.RemoteAddr)], rw, r)
 	}))
 
 	log.Println("Starting load balancer...")
@@ -112,6 +106,21 @@ func getIndex(address string) int {
 	hash := fnv.New32()
 	hash.Write([]byte(address))
 	hashed := int(hash.Sum32())
-	serverIndex := hashed % len(serversPool)
+	serverIndex := hashed % len(healthyPool)
 	return serverIndex
+}
+
+func healthCheck(servers []string, result []string) {
+	for i, server := range servers {
+		server := server
+		i := i
+		go func() {
+			for range time.Tick(10 * time.Second) {
+				if health(server) {
+					result[i] = server
+				}
+				log.Println(server, health(server))
+			}
+		}()
+	}
 }
