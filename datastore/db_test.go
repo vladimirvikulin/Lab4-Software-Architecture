@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 type Data struct {
@@ -106,6 +107,109 @@ func TestPutGet(t *testing.T) {
 
 			if result != value {
 				t.Errorf("Bad value returned expected %s, got %s", value, result)
+			}
+		}
+	})
+}
+
+func TestSegmentation(t *testing.T) {
+	dir, err := ioutil.TempDir("", "test-db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	db, err := NewDb(dir, 45)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.out.Close()
+
+	t.Run("Segmentation Check", func(t *testing.T) {
+		db.Put("key1", "value1")
+		db.Put("key2", "value2")
+		db.Put("key3", "value3")
+
+		if len(db.segments) != 2 {
+			t.Errorf("Expected 2 files instead %d", len(db.segments))
+		}
+	})
+
+	t.Run("Merging Check", func(t *testing.T) {
+		db.Put("key4", "value4")
+		db.Put("key5", "value5")
+
+		if len(db.segments) != 3 {
+			t.Errorf("Expected 3 files instead %d", len(db.segments))
+		}
+
+		time.Sleep(2 * time.Second)
+
+		if len(db.segments) != 2 {
+			t.Errorf("Expected 2 files instead %d", len(db.segments))
+		}
+	})
+
+	t.Run("Size Check", func(t *testing.T) {
+		file1, err := os.Open(db.segments[0].outPath)
+		defer file1.Close()
+		if err != nil {
+			t.Error(err)
+		}
+		info1, _ := file1.Stat()
+
+		file2, err := os.Open(db.segments[1].outPath)
+		defer file2.Close()
+		if err != nil {
+			t.Error(err)
+		}
+		info2, _ := file2.Stat()
+
+		if info1.Size() != 88 {
+			t.Errorf("Expected size 88 instead %d", info1.Size())
+		}
+
+		if info2.Size() != 22 {
+			t.Errorf("Expected size 22 instead %d", info2.Size())
+		}
+	})
+
+	t.Run("Newer Values Check", func(t *testing.T) {
+		db.Put("key2", "value0")
+		value, _ := db.Get("key2")
+		if value != "value0" {
+			t.Errorf("Bad value returned expected value0, got %s", value)
+		}
+	})
+
+	t.Run("Full Check", func(t *testing.T) {
+		db.Put("key6", "value6")
+
+		if len(db.segments) != 3 {
+			t.Errorf("Expected 3 files instead %d", len(db.segments))
+		}
+
+		time.Sleep(2 * time.Second)
+
+		if len(db.segments) != 2 {
+			t.Errorf("Expected 2 file instead %d", len(db.segments))
+		}
+
+		expected := []Data{
+			{"key1", "value1"},
+			{"key2", "value0"},
+			{"key3", "value3"},
+			{"key4", "value4"},
+			{"key5", "value5"},
+			{"key6", "value6"},
+		}
+
+		for i := 0; i < len(expected); i++ {
+			key := expected[i].key
+			value := expected[i].value
+			result, _ := db.Get(key)
+			if result != value {
+				t.Errorf("Bad value returned expected %s, got %s", expected[i], result)
 			}
 		}
 	})
