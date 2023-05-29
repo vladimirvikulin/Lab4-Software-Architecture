@@ -6,19 +6,16 @@ on:
       - main
 
 jobs:
-  test:
+  build-and-test:
     runs-on: ubuntu-latest
-
-    services:
-      docker:
-        image: docker:dind
-        ports:
-          - 8090:8090
-        options: --privileged
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
+
+      - name: Running integration test
+        run: |
+          docker-compose -f docker-compose.yaml -f docker-compose.test.yaml up --exit-code-from test
 
       - name: Run Unit Tests
         run: go test -v ./cmd/lb
