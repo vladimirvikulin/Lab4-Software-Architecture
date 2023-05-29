@@ -187,21 +187,18 @@ func (db *Db) recover() error {
 	return err
 }
 
-func (db *Db) getPosition(key string) (*Segment, int64, error) {
-	for i := range db.segments {
-		segment := db.segments[len(db.segments)-i-1]
-		if pos, ok := segment.index[key]; ok {
-			return segment, pos, nil
-		}
-	}
-
-	return nil, 0, nil
-}
-
 func (db *Db) Get(key string) (string, error) {
-	segment, position, err := db.getPosition(key)
-	if err != nil {
-		return "", err
+	var (
+		segment  *Segment
+		position int64
+		ok       bool
+	)
+
+	for i := range db.segments {
+		segment = db.segments[len(db.segments)-i-1]
+		if position, ok = segment.index[key]; ok {
+			break
+		}
 	}
 
 	return segment.getValue(position)
