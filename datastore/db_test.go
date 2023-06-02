@@ -214,3 +214,65 @@ func TestSegmentation(t *testing.T) {
 		}
 	})
 }
+
+func TestDelete(t *testing.T) {
+  dir, err := ioutil.TempDir("", "test-db")
+  if err != nil {
+    t.Fatal(err)
+  }
+  defer os.RemoveAll(dir)
+
+  db, err := NewDb(dir, 300)
+  if err != nil {
+    t.Fatal(err)
+  }
+  defer db.out.Close()
+
+  data := []Data{
+    {"key1", "value1"},
+    {"key2", "value2"},
+    {"key3", "value3"},
+  }
+
+  t.Run("Delete Check", func(t *testing.T) {
+    for i := 0; i < len(data); i++ {
+      key := data[i].key
+      value := data[i].value
+
+      err := db.Put(key, value)
+      if err != nil {
+        t.Errorf("Cannot put %s: %s", key, err)
+      }
+
+      err = db.Delete(key)
+      if err != nil {
+        t.Errorf("Cannot delete %s: %s", key, err)
+      }
+
+      _, err = db.Get(key)
+      if err != ErrNotFound {
+        t.Errorf("Expected ErrNotFound for key %s, got %s", key, err)
+      }
+    }
+  })
+
+  t.Run("New DB Process", func(t *testing.T) {
+    if err := db.out.Close(); err != nil {
+      t.Fatal(err)
+    }
+
+    db, err = NewDb(dir, 100)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    for i := 0; i < len(data); i++ {
+      key := data[i].key
+
+      _, err := db.Get(key)
+      if err != ErrNotFound {
+        t.Errorf("Expected ErrNotFound for key %s, got %s", key, err)
+      }
+    }
+  })
+}
