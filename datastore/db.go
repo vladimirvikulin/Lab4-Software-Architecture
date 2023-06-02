@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
 )
 
 const bufSize = 8192
@@ -20,6 +21,7 @@ type hashIndex map[string]int64
 type Segment struct {
 	index   hashIndex
 	outPath string
+	lock    sync.RWMutex
 }
 
 func (s *Segment) getValue(position int64) (string, error) {
@@ -50,6 +52,7 @@ type Db struct {
 	segmentSize int64
 	totalNumber int
 	segments    []*Segment
+	indexLock   sync.RWMutex
 }
 
 func NewDb(dir string, segmentSize int64) (*Db, error) {
@@ -179,7 +182,9 @@ func (db *Db) recover() error {
 		if err == nil {
 			var e entry
 			e.Decode(data)
+			db.indexLock.Lock()
 			db.segments[len(db.segments)-1].index[e.key] = db.outOffset
+			db.indexLock.Unlock()
 			db.outOffset += int64(n)
 		}
 	}
@@ -188,6 +193,9 @@ func (db *Db) recover() error {
 }
 
 func (db *Db) Get(key string) (string, error) {
+	db.indexLock.RLock()
+	defer db.indexLock.RUnlock()
+
 	var (
 		segment  *Segment
 		position int64
@@ -196,15 +204,25 @@ func (db *Db) Get(key string) (string, error) {
 
 	for i := range db.segments {
 		segment = db.segments[len(db.segments)-i-1]
-		if position, ok = segment.index[key]; ok {
+		segment.lock.RLock()
+		position, ok = segment.index[key]
+		segment.lock.RUnlock()
+		if ok {
 			break
 		}
+	}
+
+	if !ok {
+		return "", ErrNotFound
 	}
 
 	return segment.getValue(position)
 }
 
 func (db *Db) Put(key, value string) error {
+	db.indexLock.Lock()
+	defer db.indexLock.Unlock()
+
 	entry := entry{
 		key:   key,
 		value: value,
@@ -228,7 +246,9 @@ func (db *Db) Put(key, value string) error {
 		return err
 	}
 
+	db.segments[len(db.segments)-1].lock.Lock()
 	db.segments[len(db.segments)-1].index[entry.key] = db.outOffset
+	db.segments[len(db.segments)-1].lock.Unlock()
 	db.outOffset += int64(n)
 
 	return nil
