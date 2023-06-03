@@ -36,14 +36,9 @@ func (s *IntegrationSuite) TestLoadBalancer(c *C) {
 		c.Skip("Integration test is not enabled")
 	}
 
-	// Перевірка доступності балансувальника
-	if !checkBalancer() {
-		c.Skip("Balancer is not available")
-	}
-
 	// Дані не знайдено
 	resp1, _ := client.Get(fmt.Sprintf("%s/api/v1/some-data", baseAddress))
-	c.Assert(resp1.StatusCode, Equals, http.StatusNotFound)
+	c.Assert(resp1.StatusCode, Equals, http.StatusBadRequest)
 
 	// Дані не знайдено
 	resp2, _ := client.Get(fmt.Sprintf("%s/api/v1/some-data?key=kent", baseAddress))
@@ -61,17 +56,6 @@ func (s *IntegrationSuite) TestLoadBalancer(c *C) {
 	c.Assert(body.Value, Not(Equals), "")
 
 	db.Body.Close()
-}
-
-func checkBalancer() bool {
-	// Перевірка доступності балансувальника
-	resp, err := client.Get(baseAddress)
-	if err != nil {
-		return false
-	}
-	defer resp.Body.Close()
-
-	return resp.StatusCode == http.StatusOK
 }
 
 func (s *IntegrationSuite) BenchmarkLoadBalancer(c *C) {
