@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     branches:
-      - lab5/datastore
+      - main
 
 jobs:
   build-and-test:
