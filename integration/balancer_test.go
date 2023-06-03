@@ -60,7 +60,7 @@ func (s *IntegrationSuite) TestLoadBalancer(c *C) {
 
 func (s *IntegrationSuite) BenchmarkLoadBalancer(c *C) {
 	for i := 0; i < c.N; i++ {
-		_, err := client.Get(fmt.Sprintf("%s/api/v1/some-data", baseAddress))
-		c.Assert(err, IsNil)
+		resp, _ := client.Get(fmt.Sprintf("%s/api/v1/some-data", baseAddress))
+		c.Assert(resp.StatusCode, Equals, http.StatusOK)
 	}
 }
