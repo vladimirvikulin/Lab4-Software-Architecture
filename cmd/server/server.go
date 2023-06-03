@@ -91,6 +91,8 @@ func main() {
 	server := httptools.CreateServer(*port, mux)
 	server.Start()
 
+	time.Sleep(5 * time.Second)
+
 	buffer := new(bytes.Buffer)
 	body := Request{Value: time.Now().Format(time.RFC3339)}
 	if err := json.NewEncoder(buffer).Encode(body); err != nil {
