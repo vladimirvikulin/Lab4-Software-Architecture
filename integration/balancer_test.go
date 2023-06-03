@@ -11,7 +11,7 @@ import (
 const baseAddress = "http://balancer:8090"
 
 var client = http.Client{
-	Timeout: 3 * time.Second,
+	Timeout: 18 * time.Second,
 }
 
 func TestBalancer(t *testing.T) {
@@ -19,28 +19,15 @@ func TestBalancer(t *testing.T) {
 		t.Skip("Integration test is not enabled")
 	}
 
-	// Перевірка доступності балансувальника
-	if !checkBalancer() {
-		t.Skip("Balancer is not available")
-	}
-
 	// Виконання запиту до балансувальника
-	resp, err := client.Get(fmt.Sprintf("%s/api/v1/some-data", baseAddress))
-	if err != nil {
+	for i := 0; i < 5; i++ {
+		time.Sleep(6 * time.Second)
+		resp, err := client.Get(fmt.Sprintf("%s/api/v1/some-data", baseAddress))
+		if err != nil {
 		t.Error(err)
+		}
+		t.Logf("response from [%s]", resp.Header.Get("lb-from"))
 	}
-	t.Logf("response from [%s]", resp.Header.Get("lb-from"))
-}
-
-func checkBalancer() bool {
-	// Перевірка доступності балансувальника
-	resp, err := client.Get(baseAddress)
-	if err != nil {
-		return false
-	}
-	defer resp.Body.Close()
-
-	return resp.StatusCode == http.StatusOK
 }
 
 func BenchmarkBalancer(b *testing.B) {
