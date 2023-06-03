@@ -296,3 +296,5 @@ func (db *Db) Delete(key string) error {
 
 	return nil
 }
+
+func (db *Db) Close() { db.out.Close() }
