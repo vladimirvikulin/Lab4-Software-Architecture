@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     branches:
-      - main
+      - lab5/datastore
 
 jobs:
   build-and-test:
@@ -17,4 +17,6 @@ jobs:
         run: docker-compose -f docker-compose.yaml -f docker-compose.test.yaml up --exit-code-from test
 
       - name: Run Unit Tests
-        run: go test -v ./cmd/lb
+        run: |
+          go test -v ./cmd/lb
+          go test -v ./datastore
