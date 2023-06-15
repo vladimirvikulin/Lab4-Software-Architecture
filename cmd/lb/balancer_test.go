@@ -43,7 +43,7 @@ func (s *TestSuite) TestHealth(c *C) {
 	parsedURL1, _ := url.Parse(server1.URL)
 	hostURL1 := parsedURL1.Host
 
-	parsedURL2, _ := url.Parse(server1.URL)
+	parsedURL2, _ := url.Parse(server2.URL)
 	hostURL2 := parsedURL2.Host
 
 	servers := []string{
@@ -55,7 +55,13 @@ func (s *TestSuite) TestHealth(c *C) {
 	healthCheck(servers, result)
 	time.Sleep(12 * time.Second)
 
-	c.Assert(result[0], Equals, hostURL1)
+	server1.Close()
+	time.Sleep(12 * time.Second)
+
+	// Assert that server1 is no longer considered healthy
+	c.Assert(result[0], Equals, "")
+
+	// Assert that server2 is still considered healthy
 	c.Assert(result[1], Equals, hostURL2)
 	c.Assert(result[2], Equals, "")
 }
